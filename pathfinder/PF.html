@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PathFinder – Mobile Prototype</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <style>
+    body {
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      font-family: Inter, system-ui, sans-serif;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center text-white">
+
+<div x-data="app()" class="relative">
+
+  <!-- iPhone Frame -->
+  <div class="w-[390px] h-[780px] rounded-[40px] bg-black shadow-2xl p-4">
+    <div class="w-full h-full rounded-[32px] bg-gradient-to-b from-slate-900 to-slate-950 overflow-hidden relative">
+
+      <!-- Status Bar -->
+      <div class="flex justify-between text-xs px-4 pt-2 text-gray-300">
+        <span>9:41</span>
+        <span class="flex gap-2">
+          <i class="fa-solid fa-signal"></i>
+          <i class="fa-solid fa-wifi"></i>
+          <i class="fa-solid fa-battery-full"></i>
+        </span>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="p-4 pb-20 h-full overflow-y-auto">
+
+        <!-- HOME -->
+        <template x-if="view==='home'">
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">PathFinder 🚀</h1>
+            <p class="text-gray-300">Your journey to education, career & MMC readiness</p>
+
+            <div class="grid grid-cols-1 gap-4">
+              <button @click="startEducation()"
+                class="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:bg-white/20 transition">
+                <i class="fa-solid fa-graduation-cap text-3xl mb-3"></i>
+                <h2 class="text-xl font-semibold">Education Guidance</h2>
+                <p class="text-sm text-gray-300">Find your interest & best colleges</p>
+              </button>
+
+              <button @click="startJob()"
+                class="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:bg-white/20 transition">
+                <i class="fa-solid fa-briefcase text-3xl mb-3"></i>
+                <h2 class="text-xl font-semibold">Job Guidance</h2>
+                <p class="text-sm text-gray-300">Skills, roadmap & MMC readiness</p>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- EDUCATION FLOW -->
+        <template x-if="view==='education'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Your Interests</h2>
+
+            <p class="text-sm text-gray-300">Select fields you like (or skip)</p>
+
+            <div class="grid grid-cols-2 gap-3">
+              <template x-for="field in fields">
+                <button @click="toggleField(field)"
+                  :class="selectedFields.includes(field) ? 'bg-indigo-600' : 'bg-white/10'"
+                  class="p-3 rounded-xl text-sm">
+                  <span x-text="field"></span>
+                </button>
+              </template>
+            </div>
+
+            <button @click="analyzeEducation()"
+              class="w-full mt-4 bg-indigo-600 py-3 rounded-xl font-semibold">
+              Find Best Fields
+            </button>
+          </div>
+        </template>
+
+        <!-- EDUCATION RESULT -->
+        <template x-if="view==='eduResult'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Top Matches 🎯</h2>
+
+            <template x-for="res in eduResults">
+              <div class="bg-white/10 rounded-xl p-4">
+                <h3 class="font-semibold" x-text="res.name"></h3>
+                <p class="text-sm text-gray-300" x-text="res.reason"></p>
+              </div>
+            </template>
+
+            <button @click="view='colleges'"
+              class="w-full bg-indigo-600 py-3 rounded-xl">
+              View Colleges Near You
+            </button>
+          </div>
+        </template>
+
+        <!-- COLLEGES -->
+        <template x-if="view==='colleges'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Colleges</h2>
+
+            <template x-for="college in colleges">
+              <div @click="selectCollege(college)"
+                class="bg-white/10 p-4 rounded-xl cursor-pointer">
+                <h3 class="font-semibold" x-text="college.name"></h3>
+                <p class="text-sm text-gray-300">
+                  Fees: ₹<span x-text="college.fees"></span> | Rank: <span x-text="college.rank"></span>
+                </p>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- JOB FLOW -->
+        <template x-if="view==='job'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Career Path</h2>
+            <p class="text-sm text-gray-300">Choose or discover your role</p>
+
+            <button @click="selectRole('Software Engineer')"
+              class="w-full bg-white/10 p-4 rounded-xl">Software Engineer</button>
+            <button @click="selectRole('Data Analyst')"
+              class="w-full bg-white/10 p-4 rounded-xl">Data Analyst</button>
+            <button @click="selectRole('UX Designer')"
+              class="w-full bg-white/10 p-4 rounded-xl">UX Designer</button>
+          </div>
+        </template>
+
+        <!-- DASHBOARD -->
+        <template x-if="view==='dashboard'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Your Dashboard</h2>
+
+            <div class="bg-white/10 p-4 rounded-xl">
+              <p>Role: <b x-text="role"></b></p>
+              <p>Resume Score: <b x-text="resumeScore + '%'"></b></p>
+              <p>MMC Status:
+                <span class="text-green-400" x-show="resumeScore>=80">Eligible ✔</span>
+                <span class="text-red-400" x-show="resumeScore<80">Not Ready</span>
+              </p>
+            </div>
+
+            <button @click="improveResume()"
+              class="w-full bg-indigo-600 py-3 rounded-xl">
+              Improve Resume (AI)
+            </button>
+          </div>
+        </template>
+
+        <!-- LEADERBOARD -->
+        <template x-if="view==='leaderboard'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Top Performers 🏆</h2>
+
+            <template x-for="(user, i) in leaderboard">
+              <div class="bg-white/10 p-4 rounded-xl flex justify-between">
+                <span x-text="(i+1)+'. '+user.name"></span>
+                <span x-text="user.points+' pts'"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- PROFILE -->
+        <template x-if="view==='profile'">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold">Profile & Settings</h2>
+            <p class="text-sm text-gray-300">Manage preferences & goals</p>
+
+            <button class="w-full bg-white/10 p-4 rounded-xl">Notifications</button>
+            <button class="w-full bg-white/10 p-4 rounded-xl">Reset Path</button>
+          </div>
+        </template>
+
+      </div>
+
+      <!-- BOTTOM NAV -->
+      <div class="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-xl border-t border-white/10">
+        <div class="flex justify-around py-3 text-sm">
+          <button @click="view='home'"><i class="fa-solid fa-house"></i></button>
+          <button @click="view='dashboard'"><i class="fa-solid fa-route"></i></button>
+          <button @click="view='leaderboard'"><i class="fa-solid fa-trophy"></i></button>
+          <button @click="view='profile'"><i class="fa-solid fa-user"></i></button>
+        </div>
+      </div>
+
+      <!-- TOAST -->
+      <div x-show="toast"
+           x-transition
+           class="absolute top-10 left-1/2 -translate-x-1/2 bg-green-600 px-4 py-2 rounded-xl text-sm">
+        <span x-text="toast"></span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function app() {
+  return {
+    view: 'home',
+    fields: ['Engineering', 'Medicine', 'Design', 'Business', 'Arts', 'Science'],
+    selectedFields: [],
+    eduResults: [],
+    colleges: [
+      {name:'ABC Engineering College', fees:120000, rank:15},
+      {name:'XYZ Institute of Tech', fees:95000, rank:22}
+    ],
+    role: '',
+    resumeScore: 62,
+    toast: '',
+    leaderboard: [
+      {name:'Aarav', points:980},
+      {name:'Meera', points:940},
+      {name:'Karthik', points:910}
+    ],
+
+    startEducation() { this.view='education' },
+    startJob() { this.view='job' },
+
+    toggleField(f) {
+      this.selectedFields.includes(f)
+        ? this.selectedFields.splice(this.selectedFields.indexOf(f),1)
+        : this.selectedFields.push(f)
+    },
+
+    analyzeEducation() {
+      this.eduResults = [
+        {name:'Engineering', reason:'Strong analytical & problem-solving match'},
+        {name:'Design', reason:'Creative thinking & visual skills'},
+        {name:'Business', reason:'Leadership & communication strength'}
+      ]
+      this.view='eduResult'
+    },
+
+    selectCollege(c) {
+      this.toast = 'College Selected ✔'
+      setTimeout(()=>this.toast='',2000)
+    },
+
+    selectRole(r) {
+      this.role = r
+      this.view='dashboard'
+    },
+
+    improveResume() {
+      this.toast = 'AI Optimizing Resume...'
+      setTimeout(()=>{
+        this.resumeScore = 85
+        this.toast = 'Resume Improved! MMC Eligible 🎉'
+        setTimeout(()=>this.toast='',2000)
+      },1500)
+    }
+  }
+}
+</script>
+
+</body>
+</html>
