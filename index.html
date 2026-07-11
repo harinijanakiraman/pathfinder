@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>PathFinder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --surface:#fff7ff; --surface-dim:#e0d7e4; --surface-bright:#fff7ff;
+    --surface-container-lowest:#ffffff; --surface-container-low:#faf0fe;
+    --surface-container:#f4ebf8; --surface-container-high:#eee5f2; --surface-container-highest:#e8dfed;
+    --on-surface:#1e1a23; --on-surface-variant:#4c4450;
+    --outline:#7d7482; --outline-variant:#cec3d2;
+    --primary:#36005f; --on-primary:#ffffff; --primary-container:#4f1b7c; --on-primary-container:#bf8aef;
+    --secondary:#605a7c; --on-secondary:#ffffff; --secondary-container:#ded5fd; --on-secondary-container:#615b7c;
+    --primary-fixed:#f1dbff; --primary-fixed-dim:#deb7ff; --on-primary-fixed-variant:#5f2d8c;
+    --secondary-fixed:#e6deff; --secondary-fixed-dim:#cac1e8; --on-secondary-fixed-variant:#484263;
+    --error:#ba1a1a; --success:#1e7d47;
+    --background:#fff7ff; --on-background:#1e1a23;
+    --shadow-soft: 0 4px 20px rgba(79,27,124,0.08);
+    --shadow-hover: 0 10px 24px rgba(79,27,124,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Work Sans',sans-serif;background:var(--background);color:var(--on-surface);-webkit-font-smoothing:antialiased;padding-bottom:84px;min-height:100dvh;}
+  h1,h2,h3,h4{font-family:'Manrope',sans-serif;margin:0;}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  a{text-decoration:none;color:inherit;}
+
+  header{position:sticky;top:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--surface-container);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:64px;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand h1{font-size:20px;font-weight:800;color:var(--primary);letter-spacing:-0.01em;}
+  .icon-btn{background:none;color:var(--primary);width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;transition:background .15s;position:relative;}
+  .icon-btn:hover{background:var(--surface-container-low);}
+  .avatar{width:32px;height:32px;border-radius:999px;background:var(--primary-container);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+  .dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:999px;background:var(--error);border:1.5px solid var(--surface);}
+
+  main{max-width:1100px;margin:0 auto;padding:20px 16px 40px;}
+  .hide{display:none !important;}
+
+  .scrim{position:fixed;inset:0;background:rgba(30,26,35,.45);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .scrim.show{opacity:1;pointer-events:auto;}
+  .drawer{position:fixed;top:0;left:0;height:100%;width:280px;background:var(--surface-container-lowest);z-index:90;box-shadow:8px 0 30px rgba(0,0,0,.15);transform:translateX(-100%);transition:transform .25s ease;padding:20px;display:flex;flex-direction:column;gap:6px;}
+  .drawer.show{transform:translateX(0);}
+  .drawer h3{color:var(--primary);font-size:18px;margin-bottom:10px;}
+  .drawer a{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:10px;font-weight:600;font-size:14px;color:var(--on-surface);cursor:pointer;}
+  .drawer a:hover{background:var(--surface-container-low);}
+  .drawer .foot{margin-top:auto;font-size:11px;color:var(--on-surface-variant);border-top:1px solid var(--surface-container-high);padding-top:12px;}
+
+  .dropdown{position:absolute;top:52px;right:0;width:300px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:14px;box-shadow:var(--shadow-hover);z-index:70;overflow:hidden;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s, transform .18s;}
+  .dropdown.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .dropdown .dh{padding:12px 14px;font-weight:800;font-size:13px;border-bottom:1px solid var(--surface-container-high);color:var(--primary);}
+  .notif{padding:12px 14px;border-bottom:1px solid var(--surface-container-high);font-size:12.5px;cursor:pointer;}
+  .notif:hover{background:var(--surface-container-low);}
+  .notif:last-child{border-bottom:none;}
+  .notif b{display:block;font-size:13px;margin-bottom:2px;}
+  .notif span{color:var(--on-surface-variant);}
+
+  .modal-scrim{position:fixed;inset:0;background:rgba(30,26,35,.5);z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .modal-scrim.show{opacity:1;pointer-events:auto;}
+  .modal-box{background:var(--surface-container-lowest);border-radius:18px;max-width:420px;width:100%;padding:22px;box-shadow:var(--shadow-hover);transform:scale(.96);transition:transform .2s;max-height:85vh;overflow-y:auto;}
+  .modal-scrim.show .modal-box{transform:scale(1);}
+  .modal-box h3{font-size:20px;color:var(--primary);margin-bottom:8px;}
+  .modal-close{float:right;color:var(--on-surface-variant);}
+
+  .hero{position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(135deg,var(--primary-container),#37146b);padding:32px 24px;margin-bottom:24px;min-height:200px;display:flex;flex-direction:column;justify-content:flex-end;}
+  .hero .eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.02em;width:fit-content;margin-bottom:14px;}
+  .hero h2{color:#fff;font-size:26px;line-height:1.2;font-weight:700;max-width:520px;}
+  .hero p{color:rgba(255,255,255,.85);margin-top:8px;max-width:480px;font-size:15px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+  .chip{background:rgba(255,255,255,.16);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;backdrop-filter:blur(6px);}
+  .chip.clickable{cursor:pointer;transition:background .15s;}
+  .chip.clickable:hover{background:rgba(255,255,255,.28);}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;}
+  .btn-hero{background:#fff;color:var(--primary);font-weight:800;font-size:13px;padding:11px 20px;border-radius:10px;}
+  .btn-hero-ghost{background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:13px;padding:11px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.4);}
+
+  .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:28px;}
+  .cat-card{background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;transition:box-shadow .2s, transform .2s;cursor:pointer;text-align:left;width:100%;}
+  .cat-card:hover{box-shadow:var(--shadow-soft);transform:translateY(-2px);}
+  .cat-icon{width:44px;height:44px;border-radius:12px;background:var(--primary-fixed);color:var(--primary);display:flex;align-items:center;justify-content:center;}
+  .cat-card h3{font-size:16px;font-weight:700;}
+  .cat-card p{font-size:13px;color:var(--on-surface-variant);margin:4px 0 0;}
+  .cat-link{margin-top:auto;color:var(--primary);font-size:13px;font-weight:700;display:flex;align-items:center;gap:4px;}
+
+  section.block{margin-bottom:28px;}
+  .block-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .block-head h2{font-size:20px;font-weight:700;}
+  .link-btn{color:var(--primary);font-weight:700;font-size:13px;}
+
+  .continue-card{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:16px;overflow:hidden;display:flex;flex-wrap:wrap;box-shadow:var(--shadow-soft);}
+  .continue-img{width:220px;flex:1 1 220px;min-height:150px;background-size:cover;background-position:center;}
+  .continue-body{flex:2 1 260px;padding:18px;display:flex;flex-direction:column;gap:6px;}
+  .badge{display:inline-block;background:var(--primary);color:#fff;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;width:fit-content;}
+  .progress-track{width:100%;background:var(--surface-container-high);height:8px;border-radius:999px;overflow:hidden;margin:6px 0;}
+  .progress-fill{background:var(--primary);height:100%;border-radius:999px;transition:width .4s;}
+
+  .lb-card{background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:16px;padding:16px;}
+  .lb-row{display:flex;align-items:center;gap:12px;background:var(--surface-container-lowest);padding:12px;border-radius:12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(54,0,95,.05);}
+  .lb-rank{width:22px;text-align:center;font-weight:800;color:var(--on-surface-variant);}
+  .lb-avatar{width:32px;height:32px;border-radius:999px;background:var(--secondary-fixed);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+  .lb-name{flex:1;font-weight:600;font-size:14px;}
+  .lb-xp{font-weight:800;color:var(--primary);font-size:13px;}
+  .lb-me{border:1px solid var(--primary-fixed-dim);background:var(--secondary-fixed);}
+
+  .city-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+  .city-card{position:relative;height:180px;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow-soft);}
+  .city-card img{width:100%;height:100%;object-fit:cover;transition:transform .4s;}
+  .city-card:hover img{transform:scale(1.08);}
+  .city-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(30,26,35,.85),transparent 60%);display:flex;flex-direction:column;justify-content:flex-end;padding:12px;}
+  .city-overlay h4{color:#fff;font-size:16px;}
+  .city-overlay span{color:rgba(255,255,255,.85);font-size:11px;}
+
+  .chip-filter{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:18px;}
+  .chip-filter button{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;white-space:nowrap;background:var(--surface-container);color:var(--on-surface-variant);}
+  .chip-filter button.active{background:var(--primary);color:#fff;}
+  .course-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;}
+  .course-card{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(54,0,95,.05);transition:transform .18s, box-shadow .18s;}
+  .course-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-hover);}
+  .course-card.highlight{outline:2px solid var(--primary);}
+  .course-img{height:150px;background-size:cover;background-position:center;position:relative;}
+  .course-tag{position:absolute;top:10px;left:10px;background:var(--primary-container);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;padding:4px 8px;border-radius:6px;}
+  .course-body{padding:16px;display:flex;flex-direction:column;gap:6px;flex:1;}
+  .course-meta{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--secondary);}
+  .course-body h3{font-size:16px;font-weight:700;margin:4px 0 8px;}
+  .course-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .level-pill{background:var(--secondary-container);color:var(--on-secondary-container);font-size:10px;font-weight:800;text-transform:uppercase;padding:5px 10px;border-radius:6px;}
+  .btn-primary{background:var(--primary);color:#fff;font-weight:700;font-size:13px;padding:10px 18px;border-radius:10px;transition:opacity .15s, transform .1s;}
+  .btn-primary:hover{opacity:.9;}
+  .btn-primary:active{transform:scale(.96);}
+  .btn-secondary{background:var(--secondary-container);color:var(--primary);font-weight:700;font-size:13px;padding:10px 18px;border-radius:10px;}
+  .btn-outline{background:transparent;border:1.5px solid var(--primary);color:var(--primary);font-weight:700;font-size:13px;padding:9px 16px;border-radius:10px;}
+
+  .quiz-card{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:18px;padding:24px;max-width:640px;margin:0 auto;box-shadow:var(--shadow-soft);}
+  .quiz-progress{height:6px;background:var(--surface-container-high);border-radius:999px;overflow:hidden;margin-bottom:20px;}
+  .quiz-q{font-size:18px;font-weight:700;margin-bottom:16px;}
+  .quiz-opt{display:block;width:100%;text-align:left;background:var(--surface-container-low);border:1.5px solid var(--outline-variant);border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:14px;font-weight:600;color:var(--on-surface);transition:border-color .15s, background .15s;}
+  .quiz-opt:hover{border-color:var(--primary-fixed-dim);}
+  .result-card{text-align:center;}
+  .result-icon{width:64px;height:64px;border-radius:999px;background:var(--primary-fixed);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;}
+
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
+  .insight-card{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:16px;padding:18px;box-shadow:var(--shadow-soft);}
+  .insight-card h3{font-size:15px;font-weight:800;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  .insight-card .upd{font-size:10px;color:var(--on-surface-variant);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
+  .insight-stat{font-size:22px;font-weight:800;font-family:'Manrope',sans-serif;color:var(--on-surface);}
+  .insight-card p{font-size:12.5px;color:var(--on-surface-variant);line-height:1.5;margin:6px 0 10px;}
+  .insight-card .src{font-size:10.5px;color:var(--outline);border-top:1px dashed var(--outline-variant);padding-top:8px;}
+  .skill-pill{display:inline-block;background:var(--secondary-container);color:var(--on-secondary-container);font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;margin:3px 4px 0 0;}
+
+  .profile-head{display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+  .profile-avatar{width:64px;height:64px;border-radius:999px;background:var(--primary-container);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;}
+  .name-input{font-size:20px;font-weight:700;font-family:'Manrope',sans-serif;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--on-surface);padding:2px 0;}
+  .name-input:focus{outline:none;border-bottom-color:var(--primary);}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+  .stat-box{background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:14px;padding:16px;text-align:center;}
+  .stat-box .num{font-size:24px;font-weight:800;color:var(--primary);font-family:'Manrope',sans-serif;}
+  .stat-box .lbl{font-size:11px;color:var(--on-surface-variant);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--surface-container-high);}
+  .list-item:last-child{border-bottom:none;}
+
+  nav.bottomnav{position:fixed;bottom:0;left:0;width:100%;display:flex;justify-content:space-around;align-items:center;background:var(--surface);border-top:1px solid var(--outline-variant);padding:6px 2px calc(env(safe-area-inset-bottom) + 6px);z-index:50;}
+  nav.bottomnav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--on-surface-variant);font-size:9.5px;font-weight:700;text-transform:uppercase;padding:6px 10px;border-radius:12px;transition:background .15s,color .15s;}
+  nav.bottomnav a.active{color:var(--primary);background:var(--secondary-fixed);}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--primary);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(54,0,95,.3);opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:100;max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:640px){ .hero h2{font-size:24px;} }
+</style>
+</head>
+<body>
+
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <h3>PathFinder</h3>
+  <a onclick="goTo('home')"><span class="material-symbols-outlined">home</span> Home</a>
+  <a onclick="goTo('courses')"><span class="material-symbols-outlined">school</span> Courses</a>
+  <a onclick="goTo('career')"><span class="material-symbols-outlined">work</span> Career Discovery</a>
+  <a onclick="goTo('insights')"><span class="material-symbols-outlined">insights</span> Insights</a>
+  <a onclick="goTo('profile')"><span class="material-symbols-outlined">person</span> Profile</a>
+  <div class="foot">Data backend: persistent storage (profile, progress, XP &amp; leaderboard sync in real time across sessions).</div>
+</div>
+
+<div class="modal-scrim" id="modalScrim" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<header>
+  <div class="brand">
+    <button class="icon-btn" onclick="openDrawer()"><span class="material-symbols-outlined">menu</span></button>
+    <h1>PathFinder</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;position:relative;">
+    <button class="icon-btn" onclick="toggleNotif(event)">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="dot" id="notifDot"></span>
+    </button>
+    <div class="dropdown" id="notifDropdown">
+      <div class="dh">Live updates</div>
+      <div id="notifList"></div>
+    </div>
+    <div class="avatar" id="headerAvatar" onclick="goTo('profile')" style="cursor:pointer;">?</div>
+  </div>
+</header>
+
+<main>
+
+  <div id="view-home">
+    <div class="hero">
+      <div class="eyebrow"><span class="material-symbols-outlined" style="font-size:15px;">stars</span> Now guiding Chennai &amp; Tamil Nadu students</div>
+      <h2>What do you want to achieve today?</h2>
+      <p>PathFinder bridges the gap between ambitious learners and their professional dreams — built for Tamil Nadu's academic landscape and MMC readiness.</p>
+      <div class="chip-row">
+        <span class="chip clickable" onclick="setFilter('Medical');goTo('courses')">Explore Degrees</span>
+        <span class="chip clickable" onclick="goTo('profile')">Build Resume</span>
+        <span class="chip clickable" onclick="goTo('courses')">Skill Up</span>
+      </div>
+      <div class="hero-cta">
+        <button class="btn-hero" onclick="goTo('career')">Start your journey <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span></button>
+        <button class="btn-hero-ghost" onclick="goTo('courses')">View Curriculum</button>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <button class="cat-card" onclick="goTo('courses')">
+        <div class="cat-icon"><span class="material-symbols-outlined">school</span></div>
+        <h3>Education &amp; Streams</h3>
+        <p>Find the right college and stream for your goals.</p>
+        <span class="cat-link">Browse courses <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span></span>
+      </button>
+      <button class="cat-card" onclick="goTo('career')">
+        <div class="cat-icon" style="background:var(--secondary-container);color:var(--secondary);"><span class="material-symbols-outlined">explore</span></div>
+        <h3>Career Discovery</h3>
+        <p>A short quiz to guide your professional path.</p>
+        <span class="cat-link">Start quiz <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span></span>
+      </button>
+      <button class="cat-card" onclick="goTo('insights')">
+        <div class="cat-icon"><span class="material-symbols-outlined">insights</span></div>
+        <h3>Market Insights</h3>
+        <p>Researched MMC cutoffs &amp; Chennai IT hiring data.</p>
+        <span class="cat-link">View insights <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span></span>
+      </button>
+      <button class="cat-card" onclick="goTo('profile')">
+        <div class="cat-icon" style="background:var(--secondary-container);color:var(--secondary);"><span class="material-symbols-outlined">badge</span></div>
+        <h3>Job Readiness</h3>
+        <p>Track your MMC status and profile strength.</p>
+        <span class="cat-link">Check status <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span></span>
+      </button>
+    </div>
+
+    <section class="block">
+      <div class="block-head"><h2>Continue Learning</h2><button class="link-btn" onclick="goTo('courses')">View all</button></div>
+      <div id="continueCard"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Tamil Nadu Spotlight</h2><button class="link-btn" onclick="openMapsAll()">View regional maps</button></div>
+      <div class="city-grid" id="cityGrid"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Path Leaderboard</h2><button class="link-btn" onclick="goTo('profile')">My profile</button></div>
+      <div class="lb-card"><div id="lbList"></div></div>
+    </section>
+  </div>
+
+  <div id="view-courses" class="hide">
+    <h2 style="font-size:26px;margin-bottom:4px;">My Courses</h2>
+    <p style="color:var(--on-surface-variant);margin:0 0 18px;">Continue your journey to professional excellence.</p>
+    <div class="chip-filter" id="filterChips"></div>
+    <div class="course-grid" id="courseGrid"></div>
+  </div>
+
+  <div id="view-career" class="hide">
+    <h2 style="font-size:26px;margin-bottom:4px;text-align:center;">Career Discovery</h2>
+    <p style="color:var(--on-surface-variant);margin:0 0 24px;text-align:center;">Five quick questions to point you toward a track.</p>
+    <div class="quiz-card" id="quizCard"></div>
+  </div>
+
+  <div id="view-insights" class="hide">
+    <h2 style="font-size:26px;margin-bottom:4px;">Market Insights</h2>
+    <p style="color:var(--on-surface-variant);margin:0 0 18px;">Researched, source-linked data on Tamil Nadu medical admissions and the Chennai tech job market.</p>
+    <div class="insight-grid" id="insightGrid"></div>
+  </div>
+
+  <div id="view-profile" class="hide">
+    <div class="profile-head">
+      <div class="profile-avatar" id="profAvatar">?</div>
+      <div>
+        <input class="name-input" id="nameInput" placeholder="Your name" />
+        <div style="font-size:13px;color:var(--on-surface-variant);" id="rankLine">Rank —</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="num" id="statXP">0</div><div class="lbl">XP</div></div>
+      <div class="stat-box"><div class="num" id="statCourses">0</div><div class="lbl">Enrolled</div></div>
+      <div class="stat-box"><div class="num" id="statAvg">0%</div><div class="lbl">Avg Progress</div></div>
+    </div>
+    <section class="block">
+      <div class="block-head"><h2>Career Result</h2></div>
+      <div class="lb-card" id="careerResultBox">Take the Career Discovery quiz to see your recommended track.</div>
+    </section>
+    <section class="block">
+      <div class="block-head"><h2>My Courses</h2></div>
+      <div class="lb-card"><div id="profCourseList"></div></div>
+    </section>
+    <section class="block">
+      <div class="block-head"><h2>Account</h2></div>
+      <div class="lb-card" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-outline" onclick="exportData()">Export my data (JSON)</button>
+        <button class="btn-outline" style="border-color:var(--error);color:var(--error);" onclick="resetData()">Reset progress</button>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<nav class="bottomnav">
+  <a href="#" data-v="home" onclick="goTo('home');return false;"><span class="material-symbols-outlined">home</span>Home</a>
+  <a href="#" data-v="courses" onclick="goTo('courses');return false;"><span class="material-symbols-outlined">school</span>Courses</a>
+  <a href="#" data-v="career" onclick="goTo('career');return false;"><span class="material-symbols-outlined">work</span>Career</a>
+  <a href="#" data-v="insights" onclick="goTo('insights');return false;"><span class="material-symbols-outlined">insights</span>Insights</a>
+  <a href="#" data-v="profile" onclick="goTo('profile');return false;"><span class="material-symbols-outlined">person</span>Profile</a>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COURSES = [
+  {id:'py', name:'Programming Basics (Python)', cat:'Development', tag:'Popular', level:'Beginner', dur:'12h 45m',
+    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuBItQk36vCJMUxvlyZQE2FMXRWE0ogw0NUXZTGBMBSsQYqNl0bdbpaKkngK8zpiSKoNqx6za5r-qfhvw7cNfPmw9DRPgTWVC1pyB1hKmSUemwKb38IXqC4iqPtrXUB507SLctVSEw4LQsJtH1mgHXtW85zSw4N-BvSnBevZzedi6uNMSGSiLQhNMTI5UGcVt8kQM8cS_4sOGSYu0ymzuDR90hzRI9PvJhVEALGUYncZfrXbEwy2LjFM'},
+  {id:'excel', name:'Data Analysis with Excel', cat:'Data Science', tag:'', level:'Intermediate', dur:'8h 20m',
+    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuA0ZlDrD3yycVapESUwLhope2xoBmP7J-WFLmVHnS3cKepIrdBWZ7WNiqHwv6LDtJC5t2Wt_xbNV1w33Fj5kPAyD-LSz0elduvirqFI6Qtzg_G0QUxXwA1Z36S7ijGIUN0MkOGgY9ITnmK-w3xZdQlfN2KLf4CXmXJjZ8CkoUjfV3slV-U_NWamDFeNq_8jY5Cr0mw08CJCq4TEkjHgaukewLrNKJhUh0wkF_mAjwsi2PH6Dv9vTnp4'},
+  {id:'uiux', name:'UI/UX Design Foundations', cat:'Design', tag:'Trending', level:'Beginner', dur:'15h 00m',
+    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuAsFJJObai_4smpyGf7_A-cuS2leJQ7ZWkViCQfXzT29QUMp5R0pKFua-l85Tz8QAkVw7NQ9p2TtJdXlXtvVSJZOCRRyQACs20w0T4xGZIoS3oWOcpDV0JKEnKPU2f1dTiBkp-Mcf-21KQSRYMqWIUQV-9KwtKS80xocfqJwMl1RuQrsg-KdXkpx2g4lQSQbf_pYESUNMuiOFyphyi-nx0GcHniGx0rYj4X6zcE5O7H1y2rUvS5YNPq'},
+  {id:'mmc', name:'Madras Medical College Prep', cat:'Medical', tag:'MMC Track', level:'Advanced', dur:'20h 00m',
+    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuAwRg1imNbEGqQuiMFUN-94Civutsq_mBwiZAJkV1KF9s8hgQ9NZBme-OAtvLPnLawFoLI29cfdnU4xP1Jv4IDC1OlwpywZjJkbv3hHlAsBBKmb2f5Xq2Wrk2SvrXnkW0y-8Wt_7DBlkxqZqThHI7-dUGNqG2OLQoCv3PbmzwOOcYYlFStK0fy0xHDAbZ_-3Cc2_JiRGZR1DhshZdJ6NBbGu2xXgl8ktGQik7Y9iGLfZvBOFuGsG_55'},
+  {id:'pm', name:'Advanced Product Management', cat:'Business', tag:'', level:'Intermediate', dur:'10h 30m',
+    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuBg2gxCljCtnNmEfQowAQd7rAc8EDnZN7ItaGFLuc3IBxXQkLIFtBNTbZnnElULYKhS5e3W42WscoUT_UnXO6-1kwOcZgYCHWwkEXG2s8vVG5IW-aRUnR4aJWrvJ6uPtxw8kipKBmfTg8AC-7JcgjimwnfLXpQpjyoxhc6tTPRqKHKyo7cWBQFmz6fUfknCmLEygLMmjfcAv50d3LlD_pYYzEXc8_u3rsydNAeln2oE_H8XC6JiI1xB'},
+];
+const QUIZ = [
+  {q:"Which activity sounds most satisfying?", opts:[
+    {t:"Diagnosing what's wrong and fixing it", cat:'Medical'},
+    {t:"Sketching how something should look and feel", cat:'Design'},
+    {t:"Breaking a big problem into logical steps", cat:'Development'},
+    {t:"Organizing a plan so a team can hit a deadline", cat:'Business'}]},
+  {q:"Pick a subject you'd happily study for hours.", opts:[
+    {t:"Human biology", cat:'Medical'},
+    {t:"Visual composition & color", cat:'Design'},
+    {t:"Algorithms & data structures", cat:'Development'},
+    {t:"Markets & consumer behaviour", cat:'Business'}]},
+  {q:"In a group project, you naturally become the...", opts:[
+    {t:"Careful checker of details", cat:'Medical'},
+    {t:"Person shaping how it looks", cat:'Design'},
+    {t:"Builder who makes it work", cat:'Development'},
+    {t:"Person keeping everyone on track", cat:'Business'}]},
+  {q:"Which achievement would you be proudest of?", opts:[
+    {t:"Helping someone recover", cat:'Medical'},
+    {t:"Designing something people love using", cat:'Design'},
+    {t:"Shipping an app that solves a real problem", cat:'Development'},
+    {t:"Growing a small idea into a real business", cat:'Business'}]},
+  {q:"Choose your ideal Saturday task.", opts:[
+    {t:"Reading about a health topic", cat:'Medical'},
+    {t:"Redesigning a room or a poster", cat:'Design'},
+    {t:"Tinkering with code on a side project", cat:'Development'},
+    {t:"Reading about a company's strategy", cat:'Business'}]},
+];
+const TRACKS = {
+  Medical:{title:'Medical & MMC Track', desc:"You lean toward care and precision — the Madras Medical College Prep track is built for you.", course:'mmc'},
+  Design:{title:'Design Track', desc:'You think visually and empathetically — UI/UX Design Foundations is a strong next step.', course:'uiux'},
+  Development:{title:'Development Track', desc:'You enjoy structured problem-solving — start with Programming Basics (Python).', course:'py'},
+  Business:{title:'Business & Product Track', desc:'You like driving outcomes — Advanced Product Management fits your strengths.', course:'pm'},
+};
+const CITIES = [
+  {name:'Chennai', tag:'Tech & Medical Hub', img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDVXP4bSDyBG4JutvYbRjysEAv2O6JDIABasf6qVoSQFgkh-b5JUHfdydxlFxJPEbiYCieEOejkmdVzRVzLynq7q7UyxgG_hUWkfW8R1c14Xte5ZrQLNrvMp--q3BARaPAlNnkk6EFEKCwCHxjr11Vb89VLmQNSL6Lw_ySajm5lYAj-l8YUnz3TwH9FjLTxppayUD0Tn0pMVM0GD5zxiC3fE4810tRa13jkhPzVtPVrInIt8jETTMLL',
+   info:"Chennai's IT sector employs roughly half a million professionals and added an estimated 55,000–65,000 net new tech jobs through FY2025–26, anchored by the Siruseri SIPCOT IT Park (35% of Tamil Nadu's IT exports) and OMR corridor. It also hosts Madras Medical College, Tamil Nadu's top-ranked government medical institution."},
+  {name:'Coimbatore', tag:'Industrial Training', img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDum0WP7hAKxLlPVT5tTI49Ux3l3Z6zycRnwRqITDfVt85pc8Z5rjR6hGmsMG4CrohqpNIklzaxP2S56bD_ayV6YdmHXRO87scPFg-ktu_fGDDt0oX40HZWlcw6YWZ4d82VEm-KNkB0dbehLm9U93zW15TuLxVMQsJnpNC4b8l7Hv4esyVK_01zTa1pn1gu3qwN-XNLI0v7jxwQE7bI_BUdRhWx-lsqYB1YPGUxwhjtZ3hjUH6mmoGU',
+   info:"Known as the 'Manchester of South India', Coimbatore is a manufacturing and textile engineering hub with a growing base of precision-tooling and auto-component companies, plus a strong polytechnic and engineering college ecosystem."},
+  {name:'Madurai', tag:'Professional Arts', img:'https://lh3.googleusercontent.com/aida-public/AB6AXuBQfMGZu83VZpJRCYBhjkQQy3QhTNa3oyQH42YLLaKMx8S1Kfru6GfTRlTI8R3uyFiqvt26zNzQIm4bBFBWeiMbAkYdcMmU2DnE5q7Wu5R7n-wCGucdoVslspZF7XlsYrZ3Avs6ZByqYhdBgFEwOH3M7-WP3LeQ-i9yFHCe7tSBDHIeLbhX-vYiveaNtjoUAxdkudlv3Wca4_GsKylzAEJQagwboV6miybenYuafdWMWnpL8OL3XAYR',
+   info:"Madurai is south Tamil Nadu's education and healthcare anchor, home to Madurai Medical College and a wide base of arts, science and teacher-training institutions serving the southern districts."},
+  {name:'Trichy', tag:'Engineering Excellence', img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDNdqtRp8b9eF2ny7z1EjBKAkh3byJJEhvL9jKpy0mZYeOKjTuIdSNmC9undxUNo4h7wnllzAcORJh-5ZE4YEO_w_94fiL5Snt_neIgbGoa5bh5lCwm1N3SopfLwwYH6rv4W2EYaYcGQmBoB4QeUj7_7SIS8gHdiOE2zgJmEO28FmJ7J8d3qzNyQLUbjbGKMYcrFmzjHMiiy6yoGx8lR2cgjc0_arGtzsn_uWRGXmueOC1nZoqC1sSA',
+   info:"Trichy hosts NIT Tiruchirappalli and BHEL's largest manufacturing unit, making it a strong destination for core engineering, heavy electricals and public-sector-oriented careers."},
+];
+const INSIGHTS = [
+  {icon:'stethoscope', title:'MMC NEET-UG Admission Pulse', updated:'Updated · 2025 counselling cycle',
+   stat:'Rank 695', desc:"Madras Medical College's Round 1 AIQ General-category closing rank was 695 in 2025, widening to 1,296 by the final round. Tamil Nadu state-quota OC seats closed as tight as rank 4. Only 18 AIQ seats were allotted across two rounds.",
+   src:'Sources: CollegeDekho, Careers360, NEETCompanion — MMC cutoff analysis 2025'},
+  {icon:'work', title:'Chennai Tech Hiring', updated:'Updated · Jan–Jun 2026',
+   stat:'~55–65K jobs', desc:"Chennai's IT sector now employs close to half a million professionals, adding an estimated 55,000–65,000 net new technology jobs through 2025 into 2026. Siruseri SIPCOT contributes 35% of Tamil Nadu's IT exports.",
+   src:'Sources: Taggd India Decoding Jobs 2026, KiTalent Chennai IT report'},
+  {icon:'payments', title:'Fresher Salary Benchmark, Chennai IT', updated:'Updated · April 2026',
+   stat:'₹3.8–6.5 LPA', desc:"Typical fresher packages at Chennai service-based IT firms range ₹3.8–6.5 LPA, rising to ₹8–12 LPA at product companies for candidates with strong project portfolios and in-demand skills.",
+   src:'Source: Smarther Technologies — 50 Best IT Companies in Chennai, 2026'},
+  {icon:'trending_up', title:'Skills In Demand Right Now', updated:'Updated · 2026 hiring trends',
+   stat:'AI-first hiring', desc:"Employers are prioritising AI/ML, cloud computing, cybersecurity, full-stack development and data analytics; legacy manual-testing and L1-support roles face oversupply.",
+   src:'Source: Taggd IT Hiring Trends 2026', skills:['AI / ML','Cloud','Cybersecurity','Full-Stack','Data Analytics','DevOps']},
+];
+
+let profile = {name:'', xp:0};
+let courseState = {};
+let quizAnswers = [];
+let quizIndex = 0;
+let quizResultCat = null;
+let currentFilter = 'All';
+let highlightCourse = null;
+
+const $ = id => document.getElementById(id);
+function initials(name){ return (name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase() || '?'; }
+function showToast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2000); }
+
+async function loadState(){
+  try{ const r = await window.storage.get('profile', false); if(r) profile = JSON.parse(r.value); }catch(e){}
+  try{ const r = await window.storage.get('courseState', false); if(r) courseState = JSON.parse(r.value); }catch(e){}
+  try{ const r = await window.storage.get('quiz', false); if(r){ const d=JSON.parse(r.value); quizResultCat=d.resultCat; } }catch(e){}
+  if(!profile.name){ profile.name = 'Student ' + Math.floor(Math.random()*900+100); }
+  COURSES.forEach(c=>{ if(!courseState[c.id]) courseState[c.id] = {progress:0}; });
+}
+async function saveProfile(){ try{ await window.storage.set('profile', JSON.stringify(profile), false);}catch(e){} }
+async function saveCourses(){ try{ await window.storage.set('courseState', JSON.stringify(courseState), false);}catch(e){} }
+async function saveQuiz(){ try{ await window.storage.set('quiz', JSON.stringify({resultCat:quizResultCat}), false);}catch(e){} }
+async function pushLeaderboard(){
+  try{ await window.storage.set('leaderboard:'+profile.name, JSON.stringify({name:profile.name, xp:profile.xp}), true); }catch(e){}
+}
+async function fetchLeaderboard(){
+  try{
+    const idx = await window.storage.list('leaderboard:', true);
+    if(!idx || !idx.keys) return [];
+    const entries = [];
+    for(const k of idx.keys){
+      try{ const r = await window.storage.get(k, true); if(r) entries.push(JSON.parse(r.value)); }catch(e){}
+    }
+    entries.sort((a,b)=>b.xp-a.xp);
+    return entries;
+  }catch(e){ return []; }
+}
+
+function openDrawer(){ $('drawer').classList.add('show'); $('scrim').classList.add('show'); }
+function closeDrawer(){ $('drawer').classList.remove('show'); $('scrim').classList.remove('show'); }
+function toggleNotif(e){
+  e.stopPropagation();
+  $('notifDropdown').classList.toggle('show');
+  $('notifDot').style.display='none';
+}
+document.addEventListener('click', (e)=>{ if(!e.target.closest('.dropdown') && !e.target.closest('.icon-btn')) $('notifDropdown').classList.remove('show'); });
+function renderNotifications(){
+  const items = [
+    {t:'MMC Round 1 cutoff released', d:'AIQ general closing rank 695 — see Insights for the full breakdown.', v:'insights'},
+    {t:'Chennai added ~60K tech jobs', d:'Siruseri SIPCOT expansion continues to absorb new hires.', v:'insights'},
+    {t:'Your progress synced', d:'Course progress and XP are saved to your account.', v:'profile'},
+  ];
+  $('notifList').innerHTML = items.map(i=>`<div class="notif" onclick="goTo('${i.v}');$('notifDropdown').classList.remove('show')"><b>${i.t}</b><span>${i.d}</span></div>`).join('');
+}
+function openModal(html){ $('modalBox').innerHTML = html; $('modalScrim').classList.add('show'); }
+function closeModal(){ $('modalScrim').classList.remove('show'); }
+function openCity(i){
+  const c = CITIES[i];
+  openModal(`
+    <button class="modal-close icon-btn" onclick="closeModal()"><span class="material-symbols-outlined">close</span></button>
+    <h3>${c.name}</h3>
+    <div class="badge" style="margin-bottom:10px;">${c.tag}</div>
+    <p style="font-size:13.5px;color:var(--on-surface-variant);line-height:1.6;">${c.info}</p>
+    <button class="btn-primary" style="margin-top:10px;width:100%;" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(c.name+' Tamil Nadu')}','_blank')">Open in Google Maps</button>
+  `);
+}
+function openMapsAll(){ window.open('https://www.google.com/maps/search/Tamil+Nadu+education+and+tech+hubs','_blank'); }
+
+function renderHeader(){
+  $('headerAvatar').textContent = initials(profile.name);
+  $('profAvatar').textContent = initials(profile.name);
+  $('nameInput').value = profile.name;
+}
+
+function renderContinue(){
+  const inProgress = COURSES.map(c=>({...c, progress:courseState[c.id].progress})).filter(c=>c.progress>0 && c.progress<100);
+  const target = inProgress[0] || {...COURSES[0], progress:courseState[COURSES[0].id].progress};
+  $('continueCard').innerHTML = `
+    <div class="continue-card">
+      <div class="continue-img" style="background-image:url('${target.img}')"></div>
+      <div class="continue-body">
+        <span class="badge">${target.cat}</span>
+        <h3 style="font-size:17px;font-weight:700;">${target.name}</h3>
+        <div class="progress-track"><div class="progress-fill" style="width:${target.progress}%"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--on-surface-variant);">
+          <span>Progress: ${target.progress}%</span>
+          <button class="btn-primary" onclick="advanceCourse('${target.id}')">${target.progress===0?'Start':'Continue'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCities(){
+  $('cityGrid').innerHTML = CITIES.map((c,i)=>`
+    <div class="city-card" onclick="openCity(${i})">
+      <img src="${c.img}" alt="${c.name}"/>
+      <div class="city-overlay"><h4>${c.name}</h4><span>${c.tag}</span></div>
+    </div>`).join('');
+}
+
+function renderFilters(){
+  const cats = ['All', ...new Set(COURSES.map(c=>c.cat))];
+  $('filterChips').innerHTML = cats.map(c=>`<button class="${c===currentFilter?'active':''}" onclick="setFilter('${c}')">${c}</button>`).join('');
+}
+function setFilter(c){ currentFilter=c; renderFilters(); renderCourses(); }
+
+function renderCourses(){
+  const list = COURSES.filter(c=>currentFilter==='All'||c.cat===currentFilter);
+  $('courseGrid').innerHTML = list.map(c=>{
+    const p = courseState[c.id].progress;
+    return `<article class="course-card ${c.id===highlightCourse?'highlight':''}">
+      <div class="course-img" style="background-image:url('${c.img}')">
+        ${c.tag?`<div class="course-tag">${c.tag}</div>`:''}
+      </div>
+      <div class="course-body">
+        <div class="course-meta"><span>${c.cat.toUpperCase()}</span><span><span class="material-symbols-outlined" style="font-size:13px;">timer</span> ${c.dur}</span></div>
+        <h3>${c.name}</h3>
+        <div class="progress-track"><div class="progress-fill" style="width:${p}%"></div></div>
+        <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:6px;">Progress: ${p}%</div>
+        <div class="course-footer">
+          <span class="level-pill">${c.level}</span>
+          <button class="btn-primary" onclick="advanceCourse('${c.id}')">${p===0?'Start':p>=100?'Review':'Continue'}</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+async function advanceCourse(id){
+  const st = courseState[id];
+  const wasZero = st.progress===0;
+  st.progress = Math.min(100, st.progress + (wasZero?15:Math.floor(Math.random()*15)+10));
+  await saveCourses();
+  const gained = wasZero?10:20;
+  profile.xp += gained;
+  await saveProfile();
+  await pushLeaderboard();
+  showToast(st.progress>=100?`Course complete! +${gained} XP`:`+${gained} XP earned`);
+  renderContinue(); renderCourses(); renderProfile(); renderLeaderboard();
+}
+
+async function renderLeaderboard(){
+  await pushLeaderboard();
+  const entries = await fetchLeaderboard();
+  const top = entries.slice(0,5);
+  const rank = entries.findIndex(e=>e.name===profile.name)+1;
+  $('rankLine').textContent = rank ? `Rank #${rank} of ${entries.length}` : 'Rank —';
+  const rows = top.map((e,i)=>`
+    <div class="lb-row ${e.name===profile.name?'lb-me':''}">
+      <span class="lb-rank">${i+1}</span>
+      <div class="lb-avatar">${initials(e.name)}</div>
+      <span class="lb-name">${e.name}${e.name===profile.name?' (you)':''}</span>
+      <span class="lb-xp">${e.xp} XP</span>
+    </div>`).join('') || '<p style="color:var(--on-surface-variant);font-size:13px;">No leaderboard data yet — earn some XP!</p>';
+  $('lbList').innerHTML = rows;
+}
+
+function renderInsights(){
+  $('insightGrid').innerHTML = INSIGHTS.map(i=>`
+    <div class="insight-card">
+      <h3><span class="material-symbols-outlined" style="font-size:18px;">${i.icon}</span>${i.title}</h3>
+      <div class="upd">${i.updated}</div>
+      <div class="insight-stat">${i.stat}</div>
+      <p>${i.desc}</p>
+      ${i.skills?`<div>${i.skills.map(s=>`<span class="skill-pill">${s}</span>`).join('')}</div><div style="height:8px;"></div>`:''}
+      <div class="src">${i.src}</div>
+    </div>`).join('');
+}
+
+function renderProfile(){
+  renderHeader();
+  $('statXP').textContent = profile.xp;
+  const enrolled = COURSES.filter(c=>courseState[c.id].progress>0);
+  $('statCourses').textContent = enrolled.length;
+  const avg = enrolled.length ? Math.round(enrolled.reduce((a,c)=>a+courseState[c.id].progress,0)/enrolled.length) : 0;
+  $('statAvg').textContent = avg+'%';
+  $('profCourseList').innerHTML = COURSES.map(c=>`
+    <div class="list-item">
+      <span style="font-size:13px;font-weight:600;">${c.name}</span>
+      <span style="font-size:12px;color:var(--primary);font-weight:800;">${courseState[c.id].progress}%</span>
+    </div>`).join('');
+  if(quizResultCat){
+    const tr = TRACKS[quizResultCat];
+    $('careerResultBox').innerHTML = `<div style="text-align:left;"><strong style="color:var(--primary);">${tr.title}</strong><p style="font-size:13px;color:var(--on-surface-variant);margin:6px 0 0;">${tr.desc}</p></div>`;
+  }
+}
+
+function renderQuiz(){
+  if(quizIndex >= QUIZ.length){ return renderQuizResult(); }
+  const q = QUIZ[quizIndex];
+  $('quizCard').innerHTML = `
+    <div class="quiz-progress"><div class="progress-fill" style="width:${(quizIndex/QUIZ.length)*100}%;height:100%;"></div></div>
+    <div class="quiz-q">${quizIndex+1}. ${q.q}</div>
+    ${q.opts.map((o)=>`<button class="quiz-opt" onclick="answerQuiz('${o.cat}')">${o.t}</button>`).join('')}
+  `;
+}
+function answerQuiz(cat){ quizAnswers.push(cat); quizIndex++; renderQuiz(); }
+async function renderQuizResult(){
+  const counts = {};
+  quizAnswers.forEach(c=>counts[c]=(counts[c]||0)+1);
+  const winner = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  quizResultCat = winner;
+  await saveQuiz();
+  profile.xp += 25;
+  await saveProfile();
+  await pushLeaderboard();
+  const tr = TRACKS[winner];
+  $('quizCard').innerHTML = `
+    <div class="result-card">
+      <div class="result-icon"><span class="material-symbols-outlined" style="font-size:32px;">emoji_events</span></div>
+      <h3 style="font-size:20px;font-weight:800;color:var(--primary);">${tr.title}</h3>
+      <p style="color:var(--on-surface-variant);margin:10px 0 20px;">${tr.desc}</p>
+      <button class="btn-primary" onclick="goToCourseFromQuiz('${tr.course}')">View recommended course</button>
+      <button class="btn-secondary" style="margin-top:10px;" onclick="retakeQuiz()">Retake quiz</button>
+    </div>`;
+  renderProfile(); renderLeaderboard();
+}
+function retakeQuiz(){ quizAnswers=[]; quizIndex=0; renderQuiz(); }
+function goToCourseFromQuiz(courseId){
+  highlightCourse = courseId; currentFilter='All';
+  goTo('courses'); renderFilters(); renderCourses();
+  showToast('Recommended course highlighted below');
+  setTimeout(()=>{ highlightCourse=null; renderCourses(); }, 4000);
+}
+
+function exportData(){
+  const data = {profile, courseState, quizResultCat};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'pathfinder-data.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported');
+}
+async function resetData(){
+  if(!confirm('Reset all course progress and XP? This cannot be undone.')) return;
+  courseState = {}; COURSES.forEach(c=>courseState[c.id]={progress:0});
+  profile.xp = 0; quizResultCat = null;
+  await saveCourses(); await saveProfile(); await saveQuiz(); await pushLeaderboard();
+  renderContinue(); renderCourses(); renderProfile(); renderLeaderboard();
+  showToast('Progress reset');
+}
+
+function goTo(view){
+  ['home','courses','career','insights','profile'].forEach(v=>{
+    $('view-'+v).classList.toggle('hide', v!==view);
+  });
+  document.querySelectorAll('nav.bottomnav a').forEach(a=>a.classList.toggle('active', a.dataset.v===view));
+  if(view==='courses'){ renderFilters(); renderCourses(); }
+  if(view==='career' && quizIndex===0 && quizAnswers.length===0){ renderQuiz(); }
+  if(view==='insights'){ renderInsights(); }
+  if(view==='profile'){ renderProfile(); renderLeaderboard(); }
+  if(view==='home'){ renderContinue(); renderCities(); renderLeaderboard(); }
+  closeDrawer();
+  window.scrollTo(0,0);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  $('nameInput')?.addEventListener('blur', async ()=>{
+    const v = $('nameInput').value.trim();
+    if(v && v!==profile.name){
+      profile.name = v;
+      await saveProfile();
+      await pushLeaderboard();
+      renderHeader(); renderProfile(); renderLeaderboard();
+      showToast('Profile updated');
+    }
+  });
+});
+
+(async function boot(){
+  await loadState();
+  renderHeader();
+  renderContinue();
+  renderCities();
+  renderNotifications();
+  await renderLeaderboard();
+  renderFilters();
+  goTo('home');
+})();
+</script>
+</body>
+</html>
